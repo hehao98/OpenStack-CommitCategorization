@@ -1,8 +1,15 @@
 import oscar.oscar as oscar
 import pandas as pd 
 
-df = pd.read_csv("commits.csv")
+df = pd.read_csv("new-labeled-data-hh.csv")
 repos = pd.read_csv("repositories.csv").set_index("name")
+
+df["link"] = ""
+for index, row in df.iterrows():
+    url_base = repos.loc[row["repository"], "url"]
+    url = "{}/commit/{}".format(url_base, row["hash"])
+    df.loc[index, "link"] = url
+df["inferred_labels"] = ""
 
 total_files = 0
 unhandled_files = 0
@@ -17,9 +24,7 @@ for index, row in df.iterrows():
 
     label = set()
     print("========== Commit: {}, Parent: {} ==========".format(commit.sha, parent.sha))
-    url_base = repos.loc[row["repository"], "url"]
-    url = "{}/commit/{}".format(url_base, row["hash"])
-    print("URL: {}".format(url))
+    print("URL: {}".format(row["link"]))
     print(commit.full_message)
 
     if any(x in commit.full_message.lower() for x in ["bug", "fix", "issue"]):
@@ -69,8 +74,9 @@ for index, row in df.iterrows():
 
     print("Labels for this commit: {}".format(label))
     print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    df.loc[index, "inferred_label"] = ",".join(label)
+    df.loc[index, "inferred_labels"] = ";".join(list(label))
 
 handled_files = total_files - unhandled_files
 print("{}/{} files handled({:.2f}%)".format(handled_files, total_files, handled_files * 100.0 / total_files))
-df.to_csv("commits.csv")
+df.to_csv("commits.csv", index=False, 
+    columns=["company","repository","link","hash","subject","message","changed_file","label", "inferred_labels"])
